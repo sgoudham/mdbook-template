@@ -2,7 +2,32 @@
 name = "mdbook-template"
 version = "0.1.0"
 edition = "2021"
+authors = ["Goudham Suresh <sgoudham@gmail.com>"]
+description = "A mdbook preprocessor that allows the re-usability of template files with variable arguments"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/sgoudham/mdbook-template"
+keywords = ["mdbook", "markdown", "template", "design", "ui"]
+exclude = [".github/**"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "mdbook-template"
+path = "src/bin/mdbook-template.rs"
+
+[lib]
+name = "mdbook_template"
+path = "src/lib.rs"
 
 [dependencies]
+clap = "3.1.12"
+semver = "1.0.7"
+mdbook = "0.4.18"
+serde_json = "1.0.79"
+pulldown-cmark = "0.9.1"
+anyhow = "1.0.57"
+toml = "0.5.9"
+glob = "0.3.0"
+env_logger = "0.9.0"
+log = "0.4.16"
+lazy_static = "1.4.0"
+fancy-regex = "0.10.0"
