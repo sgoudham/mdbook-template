@@ -30,7 +30,7 @@ pub fn make_app() -> Command<'static> {
     )
 }
 
-fn handle_preprocessing(pre: &dyn Preprocessor) -> Result<(), Error> {
+fn handle_preprocessing(pre: &Template) -> Result<(), Error> {
     let (ctx, book) = CmdPreprocessor::parse_input(io::stdin())?;
 
     let book_version = Version::parse(&ctx.mdbook_version)?;
@@ -52,7 +52,7 @@ fn handle_preprocessing(pre: &dyn Preprocessor) -> Result<(), Error> {
     Ok(())
 }
 
-fn handle_supports(pre: &dyn Preprocessor, sub_args: &ArgMatches) -> ! {
+fn handle_supports(pre: &Template, sub_args: &ArgMatches) -> ! {
     let renderer = sub_args.value_of("renderer").expect("Required argument");
     let supported = pre.supports_renderer(renderer);
 
