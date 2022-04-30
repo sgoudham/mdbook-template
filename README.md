@@ -43,10 +43,10 @@ Given the following directory structure
 ```text
 book.toml
 src
-├── one.md
-├── two.md
-├── two
-│   └── three.md
+├── rust.md
+├── go.md
+├── friends
+│   └── hazel.md
 ├── images
 │   ├── ferris.png
 │   └── corro.png
@@ -56,10 +56,12 @@ src
 If we wanted to include the images `ferris.png` and `corro.png` within all the files through a footer, we'd have to copy
 the same piece of markdown/code in every file and set a unique path back to the `images/` directory.
 
-This is where `mdbook-template` can help.
+This is where `mdbook-template` can help with the introduction of `{{#template ...}`.
 
 Being based on the `{{#include ... }}` feature of mdbook, mdbook-template allows you to use familiar syntax to include
 files while passing in arguments to allow for dynamic generation of text.
+
+Please view the given [example](#example) which demonstrates it in action.
 
 ## Format
 
@@ -77,6 +79,48 @@ The format is as follows
 
 Arguments to be replaced within the template files should be wrapped in `{}` 
 
+## Valid Configurations
+
+```markdown
+# Valid
+{{#template file.txt path=../images author=Goudham}}
+
+# Valid
+{{#template
+    file.txt
+    path=../images
+    author=Goudham
+}}
+
+# Valid
+// Not recommended but valid
+{{#template     file.txt   path=../images author=Goudham}}
+
+# Valid
+// Not recommended but valid
+{{#template
+file.txt
+        path=../images
+    author=Goudham
+}}
+
+# Invalid
+// Use {{#include}} for simply including files
+{{#template file.txt}}
+
+# Invalid
+{{#template
+    file.txt
+    path=../images
+    author=Goudham}}
+
+# Invalid
+{{#template file.txt
+    path=../images
+    author=Goudham
+}}
+```
+
 ## Example
 
 Given the following directory
@@ -84,10 +128,10 @@ Given the following directory
 ```text
 book.toml
 src
-├── one.md
-├── two.md
-├── two
-│   └── three.md
+├── rust.md
+├── go.md
+├── friends
+│   └── hazel.md
 ├── images
 │   ├── ferris.png
 │   └── corro.png
@@ -101,77 +145,77 @@ and the following content
 `templates/footer.md`
 
 ```markdown
-- - - - 
-Designed By Goudham
+-- Designed By {authors} --
 ![ferris]({path}/ferris.png)
-![ferris]({path}/corro.png)
+![corro]({path}/corro.png)
 ```
 
-`one.md`
+`rust.md`
 ```markdown
-# One
+# Rust
 Some Content...
 
-{{#template templates/footer.md path=images}}
+{{#template templates/footer.md authors=Goudham, Hazel path=images}}
 ```
 
-`two.md`
+`go.md`
 ```markdown
-# Two
+# Go
 Some Content...
 
-{{#template templates/footer.md path=images}}
+{{#template templates/footer.md path=images authors=Goudham, Hazel}}
 ```
 
-`two/three.md`
+`friends/hazel.md`
 ```markdown
-# Three
+# Hazel
 Some Content...
 
-{{#template templates/footer.md path=../images}}
+{{#template 
+    templates/footer.md 
+    path=../images
+    authors=Goudham, Hazel
+}}
 ```
 
 After running `mdbook build` with the mdbook-template preprocessor enabled, the files will have dynamic paths to the 
-images
+images and contain **_identical_** content. 
 
-`one.md`
+`rust.md`
 ```markdown
-# One
+# Rust
 Some Content...
 
-- - - - 
-Designed By Goudham
+-- Designed By Goudham, Hazel --
 ![ferris](images/ferris.png)
-![ferris](images/corro.png)
+![corro](images/corro.png)
 ```
 
-`two.md`
+`go.md`
 ```markdown
-# Two
+# Go
 Some Content...
 
-- - - - 
-Designed By Goudham
+-- Designed By Goudham, Hazel --
 ![ferris](images/ferris.png)
-![ferris](images/corro.png)
+![corro](images/corro.png)
 ```
 
-`two/three.md`
+`friends/hazel.md`
 ```markdown
-# Three
+# Hazel
 Some Content...
 
-- - - - 
-Designed By Goudham
+-- Designed By Goudham, Hazel --
 ![ferris](../images/ferris.png)
-![ferris](../images/corro.png)
+![corro](../images/corro.png)
 ```
 
-Further examples are included within the [](/examples) section which demonstrate a variety of usages.
+Further examples are included within the [examples](/examples) directory which demonstrate a variety of usages.
 
 ## License
 
-[MIT](LICENSE)
+[MIT License](LICENSE)
 
 ## Contributing
 
