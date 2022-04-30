@@ -13,8 +13,8 @@ TODO
 
 ## Author Notes
 
-I'm still a beginner in terms of my Rust skills so I'm _definitely... probably_ sure that there are edge cases within
-this preprocessor, and I'm sure that the code could be extra performant.
+I'm still a beginner in terms of my Rust skills, so I'm _definitely... probably_ sure that there are edge cases within
+this preprocessor.
 
 ## Installation
 
@@ -30,16 +30,13 @@ $ cargo install mdbook-template
 [preprocessor.template]
 ```
 
-**You're good to go! Continue building your mdbook normally!**
+**You're good to go :D Continue building your mdbook normally!**
 
 ```shell
 $ mdbook build
 ```
 
 ## About
-
-Being based on the `{{#include ... }}` feature of mdbook, mdbook-template allows you to use familiar syntax to include
-files while passing in arguments to allow for dynamic generation of text.
 
 Given the following directory structure
 
@@ -61,10 +58,28 @@ the same piece of markdown/code in every file and set a unique path back to the 
 
 This is where `mdbook-template` can help.
 
-Through the addition of a `footer.md`, you can define a common template that every page will be able to reference with a
-relative path back to the images to ensure they are properly displayed.
+Being based on the `{{#include ... }}` feature of mdbook, mdbook-template allows you to use familiar syntax to include
+files while passing in arguments to allow for dynamic generation of text.
+
+## Format
+
+The format is as follows
+
+```text
+        1             2           3
+    {{#template     <file>      <args>}}
+```
+
+1. The identifier that this text should be replaced
+2. The `relative path` to the template file
+3. Any arguments that should be substituted within the template file. Arguments should be seperated by whitespace and
+   should be in the `key=value` format.
+
+Arguments to be replaced within the template files should be wrapped in `{}` 
 
 ## Example
+
+Given the following directory
 
 ```text
 book.toml
@@ -81,7 +96,76 @@ src
 └── SUMMARY.md
 ```
 
-TODO
+and the following content
+
+`templates/footer.md`
+
+```markdown
+- - - - 
+Designed By Goudham
+![ferris]({path}/ferris.png)
+![ferris]({path}/corro.png)
+```
+
+`one.md`
+```markdown
+# One
+Some Content...
+
+{{#template templates/footer.md path=images}}
+```
+
+`two.md`
+```markdown
+# Two
+Some Content...
+
+{{#template templates/footer.md path=images}}
+```
+
+`two/three.md`
+```markdown
+# Three
+Some Content...
+
+{{#template templates/footer.md path=../images}}
+```
+
+After running `mdbook build` with the mdbook-template preprocessor enabled, the files will have dynamic paths to the 
+images
+
+`one.md`
+```markdown
+# One
+Some Content...
+
+- - - - 
+Designed By Goudham
+![ferris](images/ferris.png)
+![ferris](images/corro.png)
+```
+
+`two.md`
+```markdown
+# Two
+Some Content...
+
+- - - - 
+Designed By Goudham
+![ferris](images/ferris.png)
+![ferris](images/corro.png)
+```
+
+`two/three.md`
+```markdown
+# Three
+Some Content...
+
+- - - - 
+Designed By Goudham
+![ferris](../images/ferris.png)
+![ferris](../images/corro.png)
+```
 
 Further examples are included within the [](/examples) section which demonstrate a variety of usages.
 
