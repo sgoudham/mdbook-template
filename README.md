@@ -9,7 +9,17 @@
 
 ## Table of Contents
 
-TODO
+- [mdbook-template](#mdbook-template)
+    * [Table of Contents](#table-of-contents)
+    * [Author Notes](#author-notes)
+    * [Installation](#installation)
+    * [About](#about)
+    * [Format](#format)
+    * [Valid Configurations](#valid-configurations)
+    * [Example](#example)
+    * [License](#license)
+    * [Contributing](#contributing)
+    * [Acknowledgement](#acknowledgement)
 
 ## Author Notes
 
@@ -77,48 +87,38 @@ The format is as follows
 3. Any arguments that should be substituted within the template file. Arguments should be seperated by whitespace and
    should be in the `key=value` format.
 
-Arguments to be replaced within the template files should be wrapped in `{}` 
+Arguments to be replaced within the template files should be wrapped in `{}`
 
 ## Valid Configurations
 
 ```markdown
 # Valid
+
 {{#template file.txt path=../images author=Goudham}}
 
 # Valid
-{{#template
-    file.txt
-    path=../images
-    author=Goudham
-}}
+
+{{#template file.txt path=../images author=Goudham }}
 
 # Valid
-// Not recommended but valid
-{{#template     file.txt   path=../images author=Goudham}}
+
+// Not recommended but valid {{#template file.txt path=../images author=Goudham}}
 
 # Valid
-// Not recommended but valid
-{{#template
-file.txt
-        path=../images
-    author=Goudham
-}}
+
+// Not recommended but valid {{#template file.txt path=../images author=Goudham }}
 
 # Invalid
-// Use {{#include}} for simply including files
-{{#template file.txt}}
+
+// Use {{#include}} for simply including files {{#template file.txt}}
 
 # Invalid
-{{#template
-    file.txt
-    path=../images
-    author=Goudham}}
+
+{{#template file.txt path=../images author=Goudham}}
 
 # Invalid
-{{#template file.txt
-    path=../images
-    author=Goudham
-}}
+
+{{#template file.txt path=../images author=Goudham }}
 ```
 
 ## Example
@@ -143,6 +143,7 @@ src
 and the following content
 
 `templates/footer.md`
+
 ```markdown
 -- Designed By {authors} --
 ![ferris]({path}/ferris.png)
@@ -150,39 +151,43 @@ and the following content
 ```
 
 `rust.md`
+
 ```markdown
 # Rust
+
 Some Content...
 
 {{#template templates/footer.md authors=Goudham, Hazel path=images}}
 ```
 
 `go.md`
+
 ```markdown
 # Go
+
 Some Content...
 
 {{#template templates/footer.md path=images authors=Goudham, Hazel}}
 ```
 
 `friends/hazel.md`
+
 ```markdown
 # Hazel
+
 Some Content...
 
-{{#template 
-    ../templates/footer.md 
-    path=../images
-    authors=Goudham, Hazel
-}}
+{{#template ../templates/footer.md path=../images authors=Goudham, Hazel }}
 ```
 
-After running `mdbook build` with the mdbook-template preprocessor enabled, the files will have dynamic paths to the 
-images and contain **_identical_** content. 
+After running `mdbook build` with the mdbook-template preprocessor enabled, the files will have dynamic paths to the
+images and contain **_identical_** content.
 
 `rust.md`
+
 ```markdown
 # Rust
+
 Some Content...
 
 -- Designed By Goudham, Hazel --
@@ -191,8 +196,10 @@ Some Content...
 ```
 
 `go.md`
+
 ```markdown
 # Go
+
 Some Content...
 
 -- Designed By Goudham, Hazel --
@@ -201,8 +208,10 @@ Some Content...
 ```
 
 `friends/hazel.md`
+
 ```markdown
 # Hazel
+
 Some Content...
 
 -- Designed By Goudham, Hazel --
