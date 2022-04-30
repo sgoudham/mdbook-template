@@ -139,3 +139,57 @@ impl<'a> Iterator for LinkIter<'a> {
 pub(crate) fn extract_template_links(contents: &str) -> LinkIter<'_> {
     LinkIter(WHOLE_TEMPLATE.captures_iter(contents))
 }
+
+#[cfg(test)]
+mod link_tests {
+    use std::path::PathBuf;
+
+    use crate::links::{extract_template_links, Link, LinkType, VecPair};
+    use crate::replace;
+
+    #[test]
+    fn test_escaped_template_link() {
+        let start = r"
+        Example Text
+        ```hbs
+        \{{#template template.md}} << an escaped link!
+        ```";
+        let end = r"
+        Example Text
+        ```hbs
+        {{#template template.md}} << an escaped link!
+        ```";
+        assert_eq!(replace(start, "", "", 0), end);
+    }
+
+    #[test]
+    fn test_extract_zero_template_links() {
+        let string = "This is some text without any template links";
+        assert_eq!(extract_template_links(string).collect::<Vec<_>>(), vec![])
+    }
+
+    #[test]
+    fn test_extract_zero_template_links_without_args() {
+        let string = "{{#template templates/footer.md}}";
+        assert_eq!(extract_template_links(string).collect::<Vec<_>>(), vec![])
+    }
+
+    #[test]
+    fn test_extract_template_links_simple_link() {
+        let s =
+            "Some random text with {{#template file.rs}} and {{#template test.rs test=nice}}...";
+
+        let res = extract_template_links(s).collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            vec![Link {
+                start_index: 48,
+                end_index: 79,
+                link_type: LinkType::Template(PathBuf::from("test.rs")),
+                link_text: "{{#template test.rs test=nice}}",
+                args: VecPair(vec!["{test}".to_string()], vec!["nice".to_string()])
+            },]
+        );
+    }
+}
