@@ -3,11 +3,11 @@ name = "mdbook-template"
 version = "0.1.0"
 edition = "2021"
 authors = ["Goudham Suresh <sgoudham@gmail.com>"]
-description = "A mdbook preprocessor that allows the re-usability of template files with variable arguments"
+description = "A mdbook preprocessor that allows the re-usability of template files with dynamic arguments"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/sgoudham/mdbook-template"
-keywords = ["mdbook", "markdown", "template", "design", "ui"]
+keywords = ["mdbook", "markdown", "template", "preprocessor", "plugin"]
 exclude = [".github/**", "examples"]
 
 [[bin]]
