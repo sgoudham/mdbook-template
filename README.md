@@ -5,7 +5,7 @@
 [![downloads](https://img.shields.io/crates/d/mdbook-template)](https://crates.io/crates/mdbook-template)
 [![license](https://img.shields.io/github/license/sgoudham/mdbook-template)](LICENSE)
 
-> A mdbook preprocessor that allows the re-usability of template files with variable arguments
+> A mdbook preprocessor that allows the re-usability of template files with dynamic arguments
 
 ## Table of Contents
 
