@@ -8,7 +8,7 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/sgoudham/mdbook-template"
 keywords = ["mdbook", "markdown", "template", "design", "ui"]
-exclude = [".github/**"]
+exclude = [".github/**", "examples"]
 
 [[bin]]
 name = "mdbook-template"
