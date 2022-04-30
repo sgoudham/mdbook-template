@@ -97,27 +97,44 @@ Arguments to be replaced within the template files should be wrapped in `{}`
 
 # Valid
 
-{{#template file.txt path=../images author=Goudham }}
+{{#template
+    file.txt
+    path=../images
+    author=Goudham
+}}
 
 # Valid
 
-// Not recommended but valid {{#template file.txt path=../images author=Goudham}}
+// Not recommended but valid
+{{#template     file.txt   path=../images author=Goudham}}
 
 # Valid
 
-// Not recommended but valid {{#template file.txt path=../images author=Goudham }}
+// Not recommended but valid
+{{#template
+file.txt
+        path=../images
+    author=Goudham
+}}
 
 # Invalid
 
-// Use {{#include}} for simply including files {{#template file.txt}}
+// Use {{#include}} for simply including files
+{{#template file.txt}}
 
 # Invalid
 
-{{#template file.txt path=../images author=Goudham}}
+{{#template
+    file.txt
+    path=../images
+    author=Goudham}}
 
 # Invalid
 
-{{#template file.txt path=../images author=Goudham }}
+{{#template file.txt
+    path=../images
+    author=Goudham
+}}
 ```
 
 ## Example
@@ -176,7 +193,11 @@ Some Content...
 
 Some Content...
 
-{{#template ../templates/footer.md path=../images authors=Goudham, Hazel }}
+{{#template
+    ../templates/footer.md
+    path=../images
+    authors=Goudham, Hazel
+}}
 ```
 
 After running `mdbook build` with the mdbook-template preprocessor enabled, the files will have dynamic paths to the
