@@ -143,7 +143,6 @@ src
 and the following content
 
 `templates/footer.md`
-
 ```markdown
 -- Designed By {authors} --
 ![ferris]({path}/ferris.png)
@@ -172,7 +171,7 @@ Some Content...
 Some Content...
 
 {{#template 
-    templates/footer.md 
+    ../templates/footer.md 
     path=../images
     authors=Goudham, Hazel
 }}
