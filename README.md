@@ -10,7 +10,6 @@
 ## Table of Contents
 
 - [mdbook-template](#mdbook-template)
-    * [Table of Contents](#table-of-contents)
     * [Author Notes](#author-notes)
     * [Installation](#installation)
     * [About](#about)
