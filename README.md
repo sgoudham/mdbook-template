@@ -81,18 +81,35 @@ The format is as follows
     {{#template     <file>      <args>}}
 ```
 
-1. The identifier that this text should be replaced
+1. The identifier that tells `mdbook-template` that this text should be replaced by a template
 2. The `relative path` to the template file
 3. Any arguments that should be substituted within the template file. Arguments should be seperated by whitespace and
    should be in the `key=value` format.
 
 ### Arguments
 
-Arguments to be replaced within the template files should be wrapped in `{{$ ...}}`
+Arguments to be replaced within the template files should be wrapped in `[[# ...]]`
+The format is as follows
+
+```text
+     1
+[[#<name>]]
+```
+
+1. The name of the argument
 
 ### Default Values
 
+Default values can be set in case some files need dynamic arguments and other don't. 
+The format is as follows 
 
+```text
+      1          2
+[[#<name> <default-value>]]
+```
+
+1. The name of the argument 
+2. The value that this argument should have by default
 
 ## Valid Configurations
 
