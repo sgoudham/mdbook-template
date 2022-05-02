@@ -91,8 +91,8 @@ impl<'a> Link<'a> {
                     .as_str()
                     .lines()
                     .map(|line| {
-                        let end_trimmed = line.trim_end_matches(LINE_BREAKS);
-                        end_trimmed.trim_start_matches(LINE_BREAKS)
+                        line.trim_end_matches(LINE_BREAKS)
+                            .trim_start_matches(LINE_BREAKS)
                     })
                     .collect::<VecDeque<_>>();
 
@@ -117,19 +117,7 @@ impl<'a> Link<'a> {
                 Some(LinkType::Template(PathBuf::from(file.trim())))
             }
             (_, _, Some(file), Some(args)) => {
-                let matches = TEMPLATE_ARGS.captures_iter(args.as_str());
-
-                let split_args = matches
-                    .into_iter()
-                    .map(|mat| {
-                        let mut split_n = mat.unwrap().get(0).unwrap().as_str().splitn(2, '=');
-                        let key = format!("{{{}}}", split_n.next().unwrap().trim());
-                        let value = split_n.next().unwrap();
-                        (key, value)
-                    })
-                    .collect::<Vec<_>>();
-                all_args.extend(split_args);
-
+                all_args.extend(extract_template_args(args.as_str()).collect::<Vec<_>>());
                 Some(LinkType::Template(PathBuf::from(file.as_str())))
             }
             (Some(mat), _, _, _) if mat.as_str().starts_with(ESCAPE_CHAR) => {
@@ -200,7 +188,8 @@ pub(crate) struct LinkIter<'a>(CaptureMatches<'a, 'a>);
 
 impl<'a> Iterator for LinkIter<'a> {
     type Item = Link<'a>;
-    fn next(&mut self) -> Option<Link<'a>> {
+
+    fn next(&mut self) -> Option<Self::Item> {
         for cap in &mut self.0 {
             if let Some(inc) = Link::from_capture(cap.unwrap()) {
                 return Some(inc);
@@ -212,6 +201,26 @@ impl<'a> Iterator for LinkIter<'a> {
 
 pub(crate) fn extract_template_links(contents: &str) -> LinkIter<'_> {
     LinkIter(TEMPLATE.captures_iter(contents))
+}
+
+struct TemplateArgsIter<'a>(CaptureMatches<'a, 'a>);
+
+impl<'a> Iterator for TemplateArgsIter<'a> {
+    type Item = (String, &'a str);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for mat in &mut self.0 {
+            let mut split_capt = mat.unwrap().get(0).unwrap().as_str().splitn(2, '=');
+            let key = format!("{{{}}}", split_capt.next().unwrap().trim());
+            let value = split_capt.next().unwrap();
+            return Some((key, value));
+        }
+        None
+    }
+}
+
+fn extract_template_args(contents: &str) -> TemplateArgsIter<'_> {
+    TemplateArgsIter(TEMPLATE_ARGS.captures_iter(contents))
 }
 
 #[cfg(test)]
