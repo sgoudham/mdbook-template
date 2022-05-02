@@ -3,8 +3,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use aho_corasick::AhoCorasick;
-use anyhow::Context;
-use fancy_regex::{CaptureMatches, Captures, Regex};
+use anyhow::{Context, Error};
+use fancy_regex::{CaptureMatches, Captures, Match, Regex};
 use lazy_static::lazy_static;
 use mdbook::errors::Result;
 
@@ -48,14 +48,6 @@ lazy_static! {
         \{\{\s*                                 # link opening parens and whitespace(s)
         \#([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)       # arg name 
         \s*                                     # optional separating whitespace(s)
-        \}\}                                    # link closing parens
-         
-        |                                       # or
-         
-        \{\{\s*                                 # link opening parens and whitespace
-        \#([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)       # arg name
-        \s+                                     # separating whitespace(s)
-        ([^}]+)                                 # get default value for argument
         \}\}                                    # link closing parens"
     )
     .unwrap();
@@ -67,7 +59,7 @@ pub(crate) struct Link<'a> {
     pub(crate) end_index: usize,
     pub(crate) link_type: LinkType,
     pub(crate) link_text: &'a str,
-    args: HashMap<String, &'a str>,
+    args: HashMap<&'a str, &'a str>,
 }
 
 impl<'a> Link<'a> {
@@ -107,7 +99,7 @@ impl<'a> Link<'a> {
                     .into_iter()
                     .map(|arg| {
                         let mut split_n = arg.splitn(2, '=');
-                        let key = format!("{{{}}}", split_n.next().unwrap().trim());
+                        let key = split_n.next().unwrap().trim();
                         let value = split_n.next().unwrap();
                         (key, value)
                     })
@@ -143,21 +135,15 @@ impl<'a> Link<'a> {
             LinkType::Template(ref pat) => {
                 let target = base.as_ref().join(pat);
 
-                fs::read_to_string(&target)
-                    .with_context(|| {
-                        format!(
-                            "Could not read template file {} ({})",
-                            self.link_text,
-                            target.display(),
-                        )
-                    })
-                    .map(|hay| {
-                        let pair = &self.args;
-                        let ac = AhoCorasick::new_auto_configured(
-                            pair.keys().collect::<Vec<_>>().as_slice(),
-                        );
-                        ac.replace_all(hay.as_str(), pair.values().collect::<Vec<_>>().as_slice())
-                    })
+                let contents = fs::read_to_string(&target).with_context(|| {
+                    format!(
+                        "Could not read template file {} ({})",
+                        self.link_text,
+                        target.display(),
+                    )
+                })?;
+
+                Ok(Args::replace(contents.as_str(), &self.args))
             }
         }
     }
@@ -206,13 +192,13 @@ pub(crate) fn extract_template_links(contents: &str) -> LinkIter<'_> {
 struct TemplateArgsIter<'a>(CaptureMatches<'a, 'a>);
 
 impl<'a> Iterator for TemplateArgsIter<'a> {
-    type Item = (String, &'a str);
+    type Item = (&'a str, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
-        for mat in &mut self.0 {
-            let mut split_capt = mat.unwrap().get(0).unwrap().as_str().splitn(2, '=');
-            let key = format!("{{{}}}", split_capt.next().unwrap().trim());
-            let value = split_capt.next().unwrap();
+        for cap in &mut self.0 {
+            let mut split_args = cap.unwrap().get(0).unwrap().as_str().splitn(2, '=');
+            let key = split_args.next().unwrap().trim();
+            let value = split_args.next().unwrap();
             return Some((key, value));
         }
         None
@@ -223,12 +209,106 @@ fn extract_template_args(contents: &str) -> TemplateArgsIter<'_> {
     TemplateArgsIter(TEMPLATE_ARGS.captures_iter(contents))
 }
 
+#[derive(PartialEq, Debug, Clone)]
+struct Args<'a> {
+    start_index: usize,
+    end_index: usize,
+    args_type: ArgsType<'a>,
+    args_text: &'a str,
+}
+
+impl<'a> Args<'a> {
+    fn replace(contents: &str, all_args: &HashMap<&str, &str>) -> String {
+        // Must keep track of indices as they will not correspond after string substitution
+        let mut previous_end_index = 0;
+        let mut replaced = String::with_capacity(contents.len());
+
+        for captured_arg in extract_args(contents) {
+            replaced.push_str(&contents[previous_end_index..captured_arg.start_index]);
+
+            match captured_arg.args_type {
+                ArgsType::Escaped => replaced.push_str(&captured_arg.args_text[1..]),
+                ArgsType::Plain(argument) => match all_args.get(argument) {
+                    None => {}
+                    Some(value) => replaced.push_str(value),
+                },
+                ArgsType::Default(argument, default_value) => {
+                    // [TEM #2]
+                    // check if captured_arg exists within hashmap
+                    // if so, replace arg with corresponding value and push to replaced string
+                    // if not, replace arg with default value and push to replaced string
+                }
+            }
+
+            previous_end_index = captured_arg.end_index;
+        }
+
+        replaced.push_str(&contents[previous_end_index..]);
+        replaced
+    }
+
+    fn from_capture(cap: Captures<'a>) -> Option<Args<'a>> {
+        let arg_type = match (cap.get(0), cap.get(1), cap.get(2)) {
+            (_, Some(argument), None) => {
+                println!("Argument -> {:?}", argument);
+                Some(ArgsType::Plain(argument.as_str()))
+            }
+            (_, Some(argument), Some(default_value)) => {
+                println!("Argument -> {:?}", argument);
+                println!("Default Value -> {:?}", default_value);
+                Some(ArgsType::Default(argument.as_str(), default_value.as_str()))
+            }
+            (Some(mat), _, _) if mat.as_str().starts_with(ESCAPE_CHAR) => {
+                println!("Escaped -> {}", mat.as_str());
+                Some(ArgsType::Escaped)
+            }
+            _ => None,
+        };
+
+        arg_type.and_then(|arg_type| {
+            cap.get(0).map(|capt| Args {
+                start_index: capt.start(),
+                end_index: capt.end(),
+                args_type: arg_type,
+                args_text: capt.as_str(),
+            })
+        })
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
+enum ArgsType<'a> {
+    Escaped,
+    Plain(&'a str),
+    Default(&'a str, &'a str),
+}
+
+struct ArgsIter<'a>(CaptureMatches<'a, 'a>);
+
+impl<'a> Iterator for ArgsIter<'a> {
+    type Item = Args<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for cap in &mut self.0 {
+            if let Some(inc) = Args::from_capture(cap.unwrap()) {
+                return Some(inc);
+            }
+        }
+        None
+    }
+}
+
+fn extract_args(contents: &str) -> ArgsIter<'_> {
+    ArgsIter(ARGS.captures_iter(contents))
+}
+
 #[cfg(test)]
 mod link_tests {
+    use std::any::Any;
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    use crate::links::{extract_template_links, Link, LinkType};
+    use crate::links::{extract_args, extract_template_links, Args, ArgsType, Link, LinkType};
     use crate::replace_template;
 
     #[test]
@@ -296,7 +376,7 @@ mod link_tests {
                 end_index: 79,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template test.rs lang=rust}}",
-                args: HashMap::from([("{lang}".to_string(), "rust")])
+                args: HashMap::from([("lang", "rust")])
             },]
         );
     }
@@ -314,10 +394,7 @@ mod link_tests {
                 end_index: 63,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template test.rs lang=rust math=2+2=4}}",
-                args: HashMap::from([
-                    ("{lang}".to_string(), "rust"),
-                    ("{math}".to_string(), "2+2=4")
-                ]),
+                args: HashMap::from([("lang", "rust"), ("math", "2+2=4")]),
             },]
         );
     }
@@ -335,10 +412,7 @@ mod link_tests {
                 end_index: 77,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template test.rs lang=rust authors=Goudham & Hazel}}",
-                args: HashMap::from([
-                    ("{lang}".to_string(), "rust"),
-                    ("{authors}".to_string(), "Goudham & Hazel")
-                ]),
+                args: HashMap::from([("lang", "rust"), ("authors", "Goudham & Hazel")]),
             },]
         );
     }
@@ -356,10 +430,7 @@ mod link_tests {
                 end_index: 87,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template      test.rs      lang=rust authors=Goudham & Hazel}}",
-                args: HashMap::from([
-                    ("{lang}".to_string(), "rust"),
-                    ("{authors}".to_string(), "Goudham & Hazel")
-                ]),
+                args: HashMap::from([("lang", "rust"), ("authors", "Goudham & Hazel")]),
             },]
         );
     }
@@ -377,7 +448,7 @@ mod link_tests {
                 end_index: 70,
                 link_type: LinkType::Template(PathBuf::from("foo-bar\\-baz/_c++.'.rs")),
                 link_text: "{{#template foo-bar\\-baz/_c++.'.rs path=images}}",
-                args: HashMap::from([("{path}".to_string(), "images")]),
+                args: HashMap::from([("path", "images")]),
             },]
         );
     }
@@ -400,7 +471,7 @@ mod link_tests {
                 end_index: 122,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template\n            test.rs\n            lang=rust\n            authors=Goudham & Hazel\n            year=2022\n        }}",
-                args: HashMap::from([("{lang}".to_string(), "rust"), ("{authors}".to_string(), "Goudham & Hazel"), ("{year}".to_string(), "2022")]),
+                args: HashMap::from([("lang", "rust"), ("authors", "Goudham & Hazel"), ("year", "2022")]),
             },]
         );
     }
@@ -423,8 +494,125 @@ year=2022
                 end_index: 78,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template\n    test.rs\nlang=rust\n        authors=Goudham & Hazel\nyear=2022\n}}",
-                args: HashMap::from([("{lang}".to_string(), "rust"), ("{authors}".to_string(), "Goudham & Hazel"), ("{year}".to_string(), "2022")]),
+                args: HashMap::from([("lang", "rust"), ("authors", "Goudham & Hazel"), ("year", "2022")]),
             },]
         );
     }
+
+    #[test]
+    fn test_extract_zero_args() {
+        let s = "This is some text without any template links";
+        assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![])
+    }
+
+    #[test]
+    fn test_extract_args_partial_match() {
+        let s = "Some random text with {{#height...";
+        assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
+        let s = "Some random text with {{#image ferris.png...";
+        assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
+        let s = "Some random text with {{#width 550...";
+        assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
+        let s = "Some random text with \\{{#title...";
+        assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
+    }
+
+    #[test]
+    fn test_extract_args_empty() {
+        let s = "Some random text with {{}} {{#}}...";
+        assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
+    }
+
+    #[test]
+    fn test_extract_args_simple() {
+        let s = "This is some random text with {{#path}} and then some more random text";
+
+        let res = extract_args(s).collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            vec![Args {
+                start_index: 30,
+                end_index: 39,
+                args_type: ArgsType::Plain("path"),
+                args_text: "{{#path}}"
+            }]
+        );
+    }
+
+    #[test]
+    fn test_extract_args_escaped() {
+        let start = r"
+        Example Text
+        \{{#height 200px}} << an escaped argument!
+        ";
+        let end = r"
+        Example Text
+        {{#height 200px}} << an escaped argument!
+        ";
+        assert_eq!(Args::replace(start, &HashMap::<&str, &str>::new()), end);
+    }
+
+    #[test]
+    fn test_replace_args_simple() {
+        let start = r"
+        Example Text
+        {{#height}} << an argument!
+        ";
+        let end = r"
+        Example Text
+        200px << an argument!
+        ";
+        assert_eq!(
+            Args::replace(start, &HashMap::from([("height", "200px")])),
+            end
+        );
+    }
+
+    #[test]
+    fn test_extract_args_with_spaces() {
+        let s1 = "This is some random text with {{     #path       }}";
+        let s2 = "This is some random text with {{#path       }}";
+        let s3 = "This is some random text with {{     #path}}";
+
+        let res1 = extract_args(s1).collect::<Vec<_>>();
+        let res2 = extract_args(s2).collect::<Vec<_>>();
+        let res3 = extract_args(s3).collect::<Vec<_>>();
+
+        assert_eq!(
+            res1,
+            vec![Args {
+                start_index: 30,
+                end_index: 51,
+                args_type: ArgsType::Plain("path"),
+                args_text: "{{     #path       }}"
+            }]
+        );
+
+        assert_eq!(
+            res2,
+            vec![Args {
+                start_index: 30,
+                end_index: 46,
+                args_type: ArgsType::Plain("path"),
+                args_text: "{{#path       }}"
+            }]
+        );
+
+        assert_eq!(
+            res3,
+            vec![Args {
+                start_index: 30,
+                end_index: 44,
+                args_type: ArgsType::Plain("path"),
+                args_text: "{{     #path}}"
+            }]
+        );
+    }
+
+    // #[test]
+    fn test_extract_args_with_default_value() {}
+
+    // #[test]
+    fn test_extract_args_with_default_value_and_spaces() {}
 }
