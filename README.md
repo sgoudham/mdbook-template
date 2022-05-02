@@ -86,55 +86,61 @@ The format is as follows
 3. Any arguments that should be substituted within the template file. Arguments should be seperated by whitespace and
    should be in the `key=value` format.
 
-Arguments to be replaced within the template files should be wrapped in `{}`
+### Arguments
+
+Arguments to be replaced within the template files should be wrapped in `{{$ ...}}`
+
+### Default Values
+
+
 
 ## Valid Configurations
 
+### Template
+
 ```markdown
-# Valid
-
 {{#template file.txt path=../images author=Goudham}}
+```
 
-# Valid
-
+```markdown
 {{#template
     file.txt
     path=../images
     author=Goudham
 }}
+```
 
-# Valid
-
-// Not recommended but valid
+```markdown
+// _Not recommended but valid_
 {{#template     file.txt   path=../images author=Goudham}}
+```
 
-# Valid
-
-// Not recommended but valid
+```markdown
+// _Not recommended but valid_
 {{#template
 file.txt
         path=../images
     author=Goudham
 }}
+```
 
-# Invalid
+### Arguments
 
-// Use {{#include}} for simply including files
-{{#template file.txt}}
+```markdown
+\[[#escaped]]
+```
 
-# Invalid
+```markdown
+[[#width]]
+```
 
-{{#template
-    file.txt
-    path=../images
-    author=Goudham}}
+```markdown
+[[#width 200px]]
+```
 
-# Invalid
-
-{{#template file.txt
-    path=../images
-    author=Goudham
-}}
+```markdown
+// _Not recommended but valid_
+[[   #width   400px   ]]
 ```
 
 ## Example
@@ -161,9 +167,9 @@ and the following content
 `templates/footer.md`
 
 ```markdown
--- Designed By {authors} --
-![ferris]({path}/ferris.png)
-![corro]({path}/corro.png)
+-- Designed By [[#authors]] --
+![ferris]([[#path]]/ferris.png)
+![corro]([[#path]]/corro.png)
 ```
 
 `rust.md`
@@ -240,6 +246,10 @@ Some Content...
 ```
 
 Further examples are included within the [examples](/examples) directory which demonstrate a variety of usages.
+
+## GitHub Actions
+
+TODO
 
 ## License
 
