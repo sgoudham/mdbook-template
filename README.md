@@ -39,7 +39,8 @@ $ cargo install mdbook-template
 [preprocessor.template]
 ```
 
-**You're good to go :D Continue building your mdbook normally!**
+**You're good to go :D  
+Continue building your mdbook normally!**
 
 ```shell
 $ mdbook build
@@ -130,12 +131,12 @@ The format is as follows
 ```
 
 ```markdown
-// _Not recommended but valid_
+// Not recommended but valid
 {{#template     file.txt   path=../images author=Goudham}}
 ```
 
 ```markdown
-// _Not recommended but valid_
+// Not recommended but valid
 {{#template
 file.txt
         path=../images
@@ -158,7 +159,7 @@ file.txt
 ```
 
 ```markdown
-// _Not recommended but valid_
+// Not recommended but valid
 [[   #width   400px   ]]
 ```
 
