@@ -2,9 +2,8 @@ use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use aho_corasick::AhoCorasick;
-use anyhow::{Context, Error};
-use fancy_regex::{CaptureMatches, Captures, Match, Regex};
+use anyhow::Context;
+use fancy_regex::{CaptureMatches, Captures, Regex};
 use lazy_static::lazy_static;
 use mdbook::errors::Result;
 
@@ -195,7 +194,7 @@ impl<'a> Iterator for TemplateArgsIter<'a> {
     type Item = (&'a str, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
-        for cap in &mut self.0 {
+        if let Some(cap) = (&mut self.0).next() {
             let mut split_args = cap.unwrap().get(0).unwrap().as_str().splitn(2, '=');
             let key = split_args.next().unwrap().trim();
             let value = split_args.next().unwrap();
