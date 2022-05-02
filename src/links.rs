@@ -137,7 +137,7 @@ impl<'a> Link<'a> {
         })
     }
 
-    pub(crate) fn substitute_args_in_template<P: AsRef<Path>>(&self, base: P) -> Result<String> {
+    pub(crate) fn replace_args<P: AsRef<Path>>(&self, base: P) -> Result<String> {
         match self.link_type {
             LinkType::Escaped => Ok((&self.link_text[1..]).to_owned()),
             LinkType::Template(ref pat) => {

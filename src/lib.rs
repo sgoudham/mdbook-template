@@ -64,7 +64,7 @@ where
     for link in links::extract_template_links(chapter_content) {
         replaced.push_str(&chapter_content[previous_end_index..link.start_index]);
 
-        match link.substitute_args_in_template(&path) {
+        match link.replace_args(&path) {
             Ok(new_content) => {
                 if depth < MAX_LINK_NESTED_DEPTH {
                     if let Some(rel_path) = link.link_type.relative_path(path) {
