@@ -1,7 +1,6 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::str::SplitN;
 
 use aho_corasick::AhoCorasick;
 use anyhow::Context;
@@ -13,26 +12,54 @@ const ESCAPE_CHAR: char = '\\';
 const LINE_BREAKS: &[char] = &['\n', '\r'];
 
 lazy_static! {
-    // r"(?x)\\\{\{\#.*\}\}|\{\{\s*\#(template)\s+([a-zA-Z0-9_^'<>().:*+|\\\/?-]+)\s+([^}]+)\}\}")
-    static ref WHOLE_TEMPLATE: Regex = Regex::new(
-            r"(?x)                              # insignificant whitespace mode
-            \\\{\{\#.*\}\}                      # match escaped link
-            |                                   # or
-            \{\{\s*                             # link opening parens and whitespace
-            \#(template)                        # link type - template
-            \s+                                 # separating whitespace
-            ([a-zA-Z0-9_^'<>().:*+|\\\/?-]+)    # relative path to template file 
-            \s+                                 # separating whitespace
-            ([^}]+)                             # get all template arguments
-            \}\}                                # link closing parens"
-        )
-        .unwrap();
     // https://stackoverflow.com/questions/22871602/optimizing-regex-to-fine-key-value-pairs-space-delimited
-    static ref ARGS: Regex = Regex::new(r"(?<=\s|\A)([^\s=]+)=(.*?)(?=(?:\s[^\s=]+=|$))").unwrap();
-}
+    static ref TEMPLATE_ARGS: Regex = Regex::new(r"(?<=\s|\A)([^\s=]+)=(.*?)(?=(?:\s[^\s=]+=|$))").unwrap();
 
-#[derive(PartialEq, Debug, Clone)]
-struct VecPair(Vec<String>, Vec<String>);
+    // r"(?x)\\\{\{\#.*\}\}|\{\{\s*\#(template)\s+([a-zA-Z0-9_^'<>().:*+|\\\/?-]+)\s+([^}]+)\}\}"
+    static ref TEMPLATE: Regex = Regex::new(
+        r"(?x)                              # enable insignificant whitespace mode
+         
+        \\\{\{                              # escaped link opening parens
+        \#.*                                # match any character
+        \}\}                                # escaped link closing parens
+         
+        |                                   # or
+         
+        \{\{\s*                             # link opening parens and whitespace(s)
+        \#(template)                        # link type - template
+        \s+                                 # separating whitespace
+        ([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)     # relative path to template file 
+        \s+                                 # separating whitespace(s)
+        ([^}]+)                             # get all template arguments
+        \}\}                                # link closing parens"
+    )
+    .unwrap();
+
+    // r"(?x)\\\{\{\#.*\}\}|\{\{\s*\#([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)\s*\}\}|\{\{\s*\#([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)\s+([^}]+)\}\}"
+    static ref ARGS: Regex = Regex::new(
+        r"(?x)                                  # enable insignificant whitespace mode
+         
+        \\\{\{                                  # escaped link opening parens  
+        \#.*                                    # match any character          
+        \}\}                                    # escaped link closing parens  
+         
+        |                                       # or
+         
+        \{\{\s*                                 # link opening parens and whitespace(s)
+        \#([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)       # arg name 
+        \s*                                     # optional separating whitespace(s)
+        \}\}                                    # link closing parens
+         
+        |                                       # or
+         
+        \{\{\s*                                 # link opening parens and whitespace
+        \#([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)       # arg name
+        \s+                                     # separating whitespace(s)
+        ([^}]+)                                 # get default value for argument
+        \}\}                                    # link closing parens"
+    )
+    .unwrap();
+}
 
 #[derive(PartialEq, Debug, Clone)]
 pub(crate) struct Link<'a> {
@@ -40,16 +67,26 @@ pub(crate) struct Link<'a> {
     pub(crate) end_index: usize,
     pub(crate) link_type: LinkType,
     pub(crate) link_text: &'a str,
-    args: VecPair,
+    args: HashMap<String, &'a str>,
 }
 
 impl<'a> Link<'a> {
     fn from_capture(cap: Captures<'a>) -> Option<Link<'a>> {
-        let mut keys: Vec<String> = vec![];
-        let mut values: Vec<String> = vec![];
+        let mut all_args = HashMap::with_capacity(20);
 
         let link_type = match (cap.get(0), cap.get(1), cap.get(2), cap.get(3)) {
             (Some(mat), _, _, _) if mat.as_str().contains(LINE_BREAKS) => {
+                /*
+                Given a template string that looks like:
+                {{#template
+                    footer.md
+                    path=../images
+                    author=Hazel
+                }}
+
+                The resulting args: <VecDeque<&str> will look like:
+                ["{{#template", "footer.md", "path=../images", "author=Hazel", "}}"]
+                 */
                 let mut args = mat
                     .as_str()
                     .lines()
@@ -57,7 +94,7 @@ impl<'a> Link<'a> {
                         let end_trimmed = line.trim_end_matches(LINE_BREAKS);
                         end_trimmed.trim_start_matches(LINE_BREAKS)
                     })
-                    .collect::<VecDeque<&str>>();
+                    .collect::<VecDeque<_>>();
 
                 // Remove {{#template
                 args.pop_front();
@@ -66,19 +103,33 @@ impl<'a> Link<'a> {
                 // Store relative path of template file
                 let file = args.pop_front().unwrap();
 
-                for arg in args {
-                    let capture = arg.splitn(2, '=');
-                    populate_key_values(&mut keys, &mut values, capture);
-                }
+                let split_args = args
+                    .into_iter()
+                    .map(|arg| {
+                        let mut split_n = arg.splitn(2, '=');
+                        let key = format!("{{{}}}", split_n.next().unwrap().trim());
+                        let value = split_n.next().unwrap();
+                        (key, value)
+                    })
+                    .collect::<Vec<_>>();
+                all_args.extend(split_args);
 
                 Some(LinkType::Template(PathBuf::from(file.trim())))
             }
             (_, _, Some(file), Some(args)) => {
-                let matches = ARGS.captures_iter(args.as_str());
-                for mat in matches {
-                    let capture = mat.unwrap().get(0).unwrap().as_str().splitn(2, '=');
-                    populate_key_values(&mut keys, &mut values, capture);
-                }
+                let matches = TEMPLATE_ARGS.captures_iter(args.as_str());
+
+                let split_args = matches
+                    .into_iter()
+                    .map(|mat| {
+                        let mut split_n = mat.unwrap().get(0).unwrap().as_str().splitn(2, '=');
+                        let key = format!("{{{}}}", split_n.next().unwrap().trim());
+                        let value = split_n.next().unwrap();
+                        (key, value)
+                    })
+                    .collect::<Vec<_>>();
+                all_args.extend(split_args);
+
                 Some(LinkType::Template(PathBuf::from(file.as_str())))
             }
             (Some(mat), _, _, _) if mat.as_str().starts_with(ESCAPE_CHAR) => {
@@ -93,7 +144,7 @@ impl<'a> Link<'a> {
                 end_index: mat.end(),
                 link_type: lnk_type,
                 link_text: mat.as_str(),
-                args: VecPair(keys, values),
+                args: all_args,
             })
         })
     }
@@ -114,8 +165,10 @@ impl<'a> Link<'a> {
                     })
                     .map(|hay| {
                         let pair = &self.args;
-                        let ac = AhoCorasick::new_auto_configured(pair.0.as_slice());
-                        ac.replace_all(hay.as_str(), pair.1.as_slice())
+                        let ac = AhoCorasick::new_auto_configured(
+                            pair.keys().collect::<Vec<_>>().as_slice(),
+                        );
+                        ac.replace_all(hay.as_str(), pair.values().collect::<Vec<_>>().as_slice())
                     })
             }
         }
@@ -158,28 +211,15 @@ impl<'a> Iterator for LinkIter<'a> {
 }
 
 pub(crate) fn extract_template_links(contents: &str) -> LinkIter<'_> {
-    LinkIter(WHOLE_TEMPLATE.captures_iter(contents))
-}
-
-fn populate_key_values<'a>(
-    keys: &mut Vec<String>,
-    values: &mut Vec<String>,
-    split_str: SplitN<'a, char>,
-) {
-    for (i, capt) in split_str.enumerate() {
-        if i % 2 == 0 {
-            keys.push(format!("{{{}}}", capt.trim()));
-        } else {
-            values.push(capt.to_string());
-        }
-    }
+    LinkIter(TEMPLATE.captures_iter(contents))
 }
 
 #[cfg(test)]
 mod link_tests {
+    use std::collections::HashMap;
     use std::path::PathBuf;
 
-    use crate::links::{extract_template_links, Link, LinkType, VecPair};
+    use crate::links::{extract_template_links, Link, LinkType};
     use crate::replace;
 
     #[test]
@@ -247,7 +287,7 @@ mod link_tests {
                 end_index: 79,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template test.rs lang=rust}}",
-                args: VecPair(vec!["{lang}".to_string()], vec!["rust".to_string()])
+                args: HashMap::from([("{lang}".to_string(), "rust")])
             },]
         );
     }
@@ -265,10 +305,10 @@ mod link_tests {
                 end_index: 63,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template test.rs lang=rust math=2+2=4}}",
-                args: VecPair(
-                    vec!["{lang}".to_string(), "{math}".to_string()],
-                    vec!["rust".to_string(), "2+2=4".to_string()],
-                )
+                args: HashMap::from([
+                    ("{lang}".to_string(), "rust"),
+                    ("{math}".to_string(), "2+2=4")
+                ]),
             },]
         );
     }
@@ -286,10 +326,10 @@ mod link_tests {
                 end_index: 77,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template test.rs lang=rust authors=Goudham & Hazel}}",
-                args: VecPair(
-                    vec!["{lang}".to_string(), "{authors}".to_string()],
-                    vec!["rust".to_string(), "Goudham & Hazel".to_string()]
-                )
+                args: HashMap::from([
+                    ("{lang}".to_string(), "rust"),
+                    ("{authors}".to_string(), "Goudham & Hazel")
+                ]),
             },]
         );
     }
@@ -307,17 +347,17 @@ mod link_tests {
                 end_index: 87,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template      test.rs      lang=rust authors=Goudham & Hazel}}",
-                args: VecPair(
-                    vec!["{lang}".to_string(), "{authors}".to_string()],
-                    vec!["rust".to_string(), "Goudham & Hazel".to_string()]
-                )
+                args: HashMap::from([
+                    ("{lang}".to_string(), "rust"),
+                    ("{authors}".to_string(), "Goudham & Hazel")
+                ]),
             },]
         );
     }
 
     #[test]
     fn test_extract_template_links_with_special_characters() {
-        let s = "Some random text with {{#template foo-bar\\-baz/_c++.rs path=images}}...";
+        let s = "Some random text with {{#template foo-bar\\-baz/_c++.'.rs path=images}}...";
 
         let res = extract_template_links(s).collect::<Vec<_>>();
 
@@ -325,10 +365,10 @@ mod link_tests {
             res,
             vec![Link {
                 start_index: 22,
-                end_index: 68,
-                link_type: LinkType::Template(PathBuf::from("foo-bar\\-baz/_c++.rs")),
-                link_text: "{{#template foo-bar\\-baz/_c++.rs path=images}}",
-                args: VecPair(vec!["{path}".to_string()], vec!["images".to_string()])
+                end_index: 70,
+                link_type: LinkType::Template(PathBuf::from("foo-bar\\-baz/_c++.'.rs")),
+                link_text: "{{#template foo-bar\\-baz/_c++.'.rs path=images}}",
+                args: HashMap::from([("{path}".to_string(), "images")]),
             },]
         );
     }
@@ -351,18 +391,7 @@ mod link_tests {
                 end_index: 122,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template\n            test.rs\n            lang=rust\n            authors=Goudham & Hazel\n            year=2022\n        }}",
-                args: VecPair(
-                    vec![
-                        "{lang}".to_string(),
-                        "{authors}".to_string(),
-                        "{year}".to_string()
-                    ],
-                    vec![
-                        "rust".to_string(),
-                        "Goudham & Hazel".to_string(),
-                        "2022".to_string()
-                    ]
-                )
+                args: HashMap::from([("{lang}".to_string(), "rust"), ("{authors}".to_string(), "Goudham & Hazel"), ("{year}".to_string(), "2022")]),
             },]
         );
     }
@@ -385,18 +414,7 @@ year=2022
                 end_index: 78,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
                 link_text: "{{#template\n    test.rs\nlang=rust\n        authors=Goudham & Hazel\nyear=2022\n}}",
-                args: VecPair(
-                    vec![
-                        "{lang}".to_string(),
-                        "{authors}".to_string(),
-                        "{year}".to_string()
-                    ],
-                    vec![
-                        "rust".to_string(),
-                        "Goudham & Hazel".to_string(),
-                        "2022".to_string()
-                    ]
-                )
+                args: HashMap::from([("{lang}".to_string(), "rust"), ("{authors}".to_string(), "Goudham & Hazel"), ("{year}".to_string(), "2022")]),
             },]
         );
     }
