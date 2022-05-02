@@ -285,4 +285,14 @@ mod lib_tests {
 
         assert_eq!(actual_chapter_content, end_chapter_content);
     }
+
+    #[test]
+    fn test_sad_path_invalid_file() {
+        let start_chapter_content = "{{#template footer.md}}";
+
+        let actual_chapter_content =
+            replace_template(start_chapter_content, &TestFileReader::default(), "", "", 0);
+
+        assert_eq!(actual_chapter_content, start_chapter_content);
+    }
 }
