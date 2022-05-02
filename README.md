@@ -74,6 +74,8 @@ Please view the given [example](#example) which demonstrates it in action.
 
 ## Format
 
+### Template
+
 The format is as follows
 
 ```text
@@ -88,7 +90,7 @@ The format is as follows
 
 ### Arguments
 
-Arguments to be replaced within the template files should be wrapped in `[[# ...]]`
+Arguments to be replaced within the template files should be wrapped in `[[# ...]]`  
 The format is as follows
 
 ```text
@@ -100,7 +102,7 @@ The format is as follows
 
 ### Default Values
 
-Default values can be set in case some files need dynamic arguments and other don't. 
+Default values can be set in case some files need dynamic arguments and other don't.  
 The format is as follows 
 
 ```text
