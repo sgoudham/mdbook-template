@@ -220,7 +220,7 @@ mod link_tests {
     use std::path::PathBuf;
 
     use crate::links::{extract_template_links, Link, LinkType};
-    use crate::replace;
+    use crate::replace_template;
 
     #[test]
     fn test_escaped_template_link() {
@@ -234,7 +234,7 @@ mod link_tests {
         ```hbs
         {{#template template.md}} << an escaped link!
         ```";
-        assert_eq!(replace(start, "", "", 0), end);
+        assert_eq!(replace_template(start, "", "", 0), end);
     }
 
     #[test]
