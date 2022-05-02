@@ -166,7 +166,7 @@ mod lib_tests {
         let start_chapter_content = "{{#template footer.md authors=Goudham & Hazel}}";
         let end_chapter_content = "Designed & Created With Love From - Goudham & Hazel";
         let file_name = PathBuf::from("footer.md");
-        let template_file_contents = "Designed & Created With Love From - {{$authors}}".to_string();
+        let template_file_contents = "Designed & Created With Love From - [[#authors]]".to_string();
         let map = HashMap::from([(file_name, template_file_contents)]);
         let file_reader = &TestFileReader::from(map);
 
@@ -187,7 +187,7 @@ mod lib_tests {
         Designed & Created With Love From Goudham & Hazel";
         let file_name = PathBuf::from("footer.md");
         let template_file_contents = r"- - - -
-        Designed & Created With Love From {{$authors}}"
+        Designed & Created With Love From [[#authors]]"
             .to_string();
         let map = HashMap::from([(file_name, template_file_contents)]);
         let file_reader = &TestFileReader::from(map);
@@ -212,10 +212,10 @@ mod lib_tests {
         - - - -
         Designed & Created With Love From Goudham & Hazel";
         let header_file_name = PathBuf::from("header.md");
-        let header_contents = r"# {{$title}}".to_string();
+        let header_contents = r"# [[#title]]".to_string();
         let footer_file_name = PathBuf::from("footer.md");
         let footer_contents = r"- - - -
-        Designed & Created With Love From {{$authors}}"
+        Designed & Created With Love From [[#authors]]"
             .to_string();
         let map = HashMap::from([
             (footer_file_name, footer_contents),
@@ -234,7 +234,7 @@ mod lib_tests {
         let start_chapter_content = "{{#template footer.md}}";
         let end_chapter_content = "Designed By - Goudham";
         let file_name = PathBuf::from("footer.md");
-        let template_file_contents = "Designed By - {{$authors Goudham}}".to_string();
+        let template_file_contents = "Designed By - [[#authors Goudham]]".to_string();
         let map = HashMap::from([(file_name, template_file_contents)]);
         let file_reader = &TestFileReader::from(map);
 
@@ -249,7 +249,7 @@ mod lib_tests {
         let start_chapter_content = "{{#template footer.md authors=Hazel}}";
         let end_chapter_content = "Designed By - Hazel";
         let file_name = PathBuf::from("footer.md");
-        let template_file_contents = "Designed By - {{$authors Goudham}}".to_string();
+        let template_file_contents = "Designed By - [[#authors Goudham]]".to_string();
         let map = HashMap::from([(file_name, template_file_contents)]);
         let file_reader = &TestFileReader::from(map);
 
@@ -269,11 +269,11 @@ mod lib_tests {
         <img src='example.png' alt='Example Title'>
         Some content...";
         let header_file_name = PathBuf::from("header.md");
-        let header_contents = r"# {{$title}}
-        {{#template image.md}}"
+        let header_contents = r"# [[#title]]
+        {{#template image.md title=[[#title]]}}"
             .to_string();
         let image_file_name = PathBuf::from("image.md");
-        let image_contents = r"<img src='example.png' alt='Example Title'>".to_string();
+        let image_contents = r"<img src='example.png' alt='[[#title]]'>".to_string();
         let map = HashMap::from([
             (image_file_name, image_contents),
             (header_file_name, header_contents),

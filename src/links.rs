@@ -43,28 +43,28 @@ lazy_static! {
     )
     .unwrap();
 
-    // r"(?x)\\\{\{\#.*\}\}|\{\{\s*\#([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)\s*\}\}|\{\{\s*\#([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)\s+([^}]+)\}\}"
+    // r"(?x)\\\[\[.*\]\]|\[\[\s*\#([\S]+)\s*\]\]|\[\[\s*\#([\S]+)\s+([^]]+)\]\]"
     static ref ARGS: Regex = Regex::new(
         r"(?x)                                  # enable insignificant whitespace mode
-         
-        \\\{\{                                  # escaped link opening parens  
-        \$.*                                    # match any character          
-        \}\}                                    # escaped link closing parens  
-         
+    
+        \\\[\[                                  # escaped link opening square brackets
+        \#.*                                    # match any character
+        \]\]                                    # escaped link closing parens
+    
         |                                       # or
-         
-        \{\{\s*                                 # link opening parens and whitespace(s)
-        \$([\S]+)                               # arg name 
+    
+        \[\[\s*                                 # link opening parens and whitespace(s)
+        \#([\S]+)                               # arg name
         \s*                                     # optional separating whitespace(s)
-        \}\}                                    # link closing parens
-        
+        \]\]                                    # link closing parens
+    
         |                                       # or
-        
-        \{\{\s*                                 # link opening parens and whitespace(s)
-        \$([\S]+)                               # arg name 
+    
+        \[\[\s*                                 # link opening parens and whitespace(s)
+        \#([\S]+)                               # arg name
         \s+                                     # optional separating whitespace(s)
-        ([^}]+)                                 # match everything after space
-        \}\}                                    # link closing parens"
+        ([^]]+)                                 # match everything after space
+        \]\]                                    # link closing parens"
     )
     .unwrap();
 }
@@ -525,25 +525,25 @@ year=2022
 
     #[test]
     fn test_extract_args_partial_match() {
-        let s = "Some random text with {{$height...";
+        let s = "Some random text with [[#height...";
         assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
-        let s = "Some random text with {{$image ferris.png...";
+        let s = "Some random text with [[#image ferris.png...";
         assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
-        let s = "Some random text with {{$width 550...";
+        let s = "Some random text with [[#width 550...";
         assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
-        let s = "Some random text with \\{{$title...";
+        let s = "Some random text with \\[[#title...";
         assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
     }
 
     #[test]
     fn test_extract_args_empty() {
-        let s = "Some random text with {{}} {{$}}...";
+        let s = "Some random text with [[]] [[#]]...";
         assert_eq!(extract_args(s).collect::<Vec<_>>(), vec![]);
     }
 
     #[test]
     fn test_extract_args_simple() {
-        let s = "This is some random text with {{$path}} and then some more random text";
+        let s = "This is some random text with [[#path]] and then some more random text";
 
         let res = extract_args(s).collect::<Vec<_>>();
 
@@ -553,7 +553,7 @@ year=2022
                 start_index: 30,
                 end_index: 39,
                 args_type: ArgsType::Plain("path"),
-                args_text: "{{$path}}"
+                args_text: "[[#path]]"
             }]
         );
     }
@@ -562,20 +562,20 @@ year=2022
     fn test_extract_args_escaped() {
         let start = r"
         Example Text
-        \{{$height 200px}} << an escaped argument!
+        \[[#height 200px]] << an escaped argument!
         ";
         let end = r"
         Example Text
-        {{$height 200px}} << an escaped argument!
+        [[#height 200px]] << an escaped argument!
         ";
         assert_eq!(Args::replace(start, &HashMap::<&str, &str>::new()), end);
     }
 
     #[test]
     fn test_extract_args_with_spaces() {
-        let s1 = "This is some random text with {{     $path       }}";
-        let s2 = "This is some random text with {{$path       }}";
-        let s3 = "This is some random text with {{     $path}}";
+        let s1 = "This is some random text with [[     #path       ]]";
+        let s2 = "This is some random text with [[#path       ]]";
+        let s3 = "This is some random text with [[     #path]]";
 
         let res1 = extract_args(s1).collect::<Vec<_>>();
         let res2 = extract_args(s2).collect::<Vec<_>>();
@@ -587,7 +587,7 @@ year=2022
                 start_index: 30,
                 end_index: 51,
                 args_type: ArgsType::Plain("path"),
-                args_text: "{{     $path       }}"
+                args_text: "[[     #path       ]]"
             }]
         );
 
@@ -597,7 +597,7 @@ year=2022
                 start_index: 30,
                 end_index: 46,
                 args_type: ArgsType::Plain("path"),
-                args_text: "{{$path       }}"
+                args_text: "[[#path       ]]"
             }]
         );
 
@@ -607,14 +607,14 @@ year=2022
                 start_index: 30,
                 end_index: 44,
                 args_type: ArgsType::Plain("path"),
-                args_text: "{{     $path}}"
+                args_text: "[[     #path]]"
             }]
         );
     }
 
     #[test]
     fn test_extract_args_with_default_value() {
-        let s = "This is some random text with {{$path 200px}} and then some more random text";
+        let s = "This is some random text with [[#path 200px]] and then some more random text";
 
         let res = extract_args(s).collect::<Vec<_>>();
 
@@ -624,7 +624,7 @@ year=2022
                 start_index: 30,
                 end_index: 45,
                 args_type: ArgsType::Default("path", "200px"),
-                args_text: "{{$path 200px}}"
+                args_text: "[[#path 200px]]"
             }]
         );
     }
@@ -632,7 +632,7 @@ year=2022
     #[test]
     fn test_extract_args_with_default_value_and_spaces() {
         let s =
-            "This is some random text with {{   $path   400px  }} and then some more random text";
+            "This is some random text with [[   #path   400px  ]] and then some more random text";
 
         let res = extract_args(s).collect::<Vec<_>>();
 
@@ -642,14 +642,14 @@ year=2022
                 start_index: 30,
                 end_index: 52,
                 args_type: ArgsType::Default("path", "400px  "),
-                args_text: "{{   $path   400px  }}"
+                args_text: "[[   #path   400px  ]]"
             }]
         );
     }
 
     #[test]
     fn test_extract_args_with_multiple_spaced_default_value() {
-        let s = "{{$title An Amazing Title}}";
+        let s = "[[#title An Amazing Title]]";
 
         let res = extract_args(s).collect::<Vec<_>>();
 
@@ -659,7 +659,7 @@ year=2022
                 start_index: 0,
                 end_index: 27,
                 args_type: ArgsType::Default("title", "An Amazing Title"),
-                args_text: "{{$title An Amazing Title}}"
+                args_text: "[[#title An Amazing Title]]"
             }]
         );
     }
@@ -668,7 +668,7 @@ year=2022
     fn test_replace_args_simple() {
         let start = r"
         Example Text
-        {{$height}} << an argument!
+        [[#height]] << an argument!
         ";
         let end = r"
         Example Text
@@ -684,7 +684,7 @@ year=2022
     fn test_replace_args_with_default() {
         let start = r"
         Example Text
-        {{$height 300px}} << an argument!
+        [[#height 300px]] << an argument!
         ";
         let end = r"
         Example Text
@@ -697,7 +697,7 @@ year=2022
     fn test_replace_args_overriding_default() {
         let start = r"
         Example Text
-        {{$height 300px}} << an argument!
+        [[#height 300px]] << an argument!
         ";
         let end = r"
         Example Text
