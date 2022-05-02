@@ -45,8 +45,16 @@ lazy_static! {
         |                                       # or
          
         \{\{\s*                                 # link opening parens and whitespace(s)
-        \#([\w'<>.:^\-\(\)\*\+\|\\\/\?]+)       # arg name 
+        \#([\S]+)                               # arg name 
         \s*                                     # optional separating whitespace(s)
+        \}\}                                    # link closing parens
+        
+        |                                       # or
+        
+        \{\{\s*                                 # link opening parens and whitespace(s)
+        \#([\S]+)                               # arg name 
+        \s+                                     # optional separating whitespace(s)
+        ([^}]+)                                 # match everything after space
         \}\}                                    # link closing parens"
     )
     .unwrap();
@@ -231,12 +239,10 @@ impl<'a> Args<'a> {
                     None => {}
                     Some(value) => replaced.push_str(value),
                 },
-                ArgsType::Default(argument, default_value) => {
-                    // [TEM #2]
-                    // check if captured_arg exists within hashmap
-                    // if so, replace arg with corresponding value and push to replaced string
-                    // if not, replace arg with default value and push to replaced string
-                }
+                ArgsType::Default(argument, default_value) => match all_args.get(argument) {
+                    None => replaced.push_str(default_value),
+                    Some(value) => replaced.push_str(value),
+                },
             }
 
             previous_end_index = captured_arg.end_index;
@@ -247,18 +253,12 @@ impl<'a> Args<'a> {
     }
 
     fn from_capture(cap: Captures<'a>) -> Option<Args<'a>> {
-        let arg_type = match (cap.get(0), cap.get(1), cap.get(2)) {
-            (_, Some(argument), None) => {
-                println!("Argument -> {:?}", argument);
-                Some(ArgsType::Plain(argument.as_str()))
-            }
-            (_, Some(argument), Some(default_value)) => {
-                println!("Argument -> {:?}", argument);
-                println!("Default Value -> {:?}", default_value);
+        let arg_type = match (cap.get(0), cap.get(1), cap.get(2), cap.get(3)) {
+            (_, Some(argument), None, None) => Some(ArgsType::Plain(argument.as_str())),
+            (_, _, Some(argument), Some(default_value)) => {
                 Some(ArgsType::Default(argument.as_str(), default_value.as_str()))
             }
-            (Some(mat), _, _) if mat.as_str().starts_with(ESCAPE_CHAR) => {
-                println!("Escaped -> {}", mat.as_str());
+            (Some(mat), _, _, _) if mat.as_str().starts_with(ESCAPE_CHAR) => {
                 Some(ArgsType::Escaped)
             }
             _ => None,
@@ -303,7 +303,6 @@ fn extract_args(contents: &str) -> ArgsIter<'_> {
 
 #[cfg(test)]
 mod link_tests {
-    use std::any::Any;
     use std::collections::HashMap;
     use std::path::PathBuf;
 
@@ -553,22 +552,6 @@ year=2022
     }
 
     #[test]
-    fn test_replace_args_simple() {
-        let start = r"
-        Example Text
-        {{#height}} << an argument!
-        ";
-        let end = r"
-        Example Text
-        200px << an argument!
-        ";
-        assert_eq!(
-            Args::replace(start, &HashMap::from([("height", "200px")])),
-            end
-        );
-    }
-
-    #[test]
     fn test_extract_args_with_spaces() {
         let s1 = "This is some random text with {{     #path       }}";
         let s2 = "This is some random text with {{#path       }}";
@@ -609,9 +592,100 @@ year=2022
         );
     }
 
-    // #[test]
-    fn test_extract_args_with_default_value() {}
+    #[test]
+    fn test_extract_args_with_default_value() {
+        let s = "This is some random text with {{#path 200px}} and then some more random text";
 
-    // #[test]
-    fn test_extract_args_with_default_value_and_spaces() {}
+        let res = extract_args(s).collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            vec![Args {
+                start_index: 30,
+                end_index: 45,
+                args_type: ArgsType::Default("path", "200px"),
+                args_text: "{{#path 200px}}"
+            }]
+        );
+    }
+
+    #[test]
+    fn test_extract_args_with_default_value_and_spaces() {
+        let s =
+            "This is some random text with {{   #path   400px  }} and then some more random text";
+
+        let res = extract_args(s).collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            vec![Args {
+                start_index: 30,
+                end_index: 52,
+                args_type: ArgsType::Default("path", "400px  "),
+                args_text: "{{   #path   400px  }}"
+            }]
+        );
+    }
+
+    #[test]
+    fn test_extract_args_with_multiple_spaced_default_value() {
+        let s = "{{#title An Amazing Title}}";
+
+        let res = extract_args(s).collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            vec![Args {
+                start_index: 0,
+                end_index: 27,
+                args_type: ArgsType::Default("title", "An Amazing Title"),
+                args_text: "{{#title An Amazing Title}}"
+            }]
+        );
+    }
+
+    #[test]
+    fn test_replace_args_simple() {
+        let start = r"
+        Example Text
+        {{#height}} << an argument!
+        ";
+        let end = r"
+        Example Text
+        200px << an argument!
+        ";
+        assert_eq!(
+            Args::replace(start, &HashMap::from([("height", "200px")])),
+            end
+        );
+    }
+
+    #[test]
+    fn test_replace_args_with_default() {
+        let start = r"
+        Example Text
+        {{#height 300px}} << an argument!
+        ";
+        let end = r"
+        Example Text
+        300px << an argument!
+        ";
+        assert_eq!(Args::replace(start, &HashMap::<&str, &str>::new()), end);
+    }
+
+    #[test]
+    fn test_replace_args_overriding_default() {
+        let start = r"
+        Example Text
+        {{#height 300px}} << an argument!
+        ";
+        let end = r"
+        Example Text
+        200px << an argument!
+        ";
+        assert_eq!(
+            Args::replace(start, &HashMap::from([("height", "200px")])),
+            end
+        );
+    }
 }
