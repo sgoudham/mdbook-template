@@ -244,15 +244,15 @@ impl<'a> Args<'a> {
     }
 
     fn from_capture(cap: Captures<'a>) -> Option<Args<'a>> {
-        // https://regex101.com/r/lKSOOl/3
+        // https://regex101.com/r/lKSOOl/4
         let arg_type = match (cap.get(0), cap.get(1), cap.get(2), cap.get(3)) {
-            // This looks like {{$path}}
+            // This looks like [[#path]]
             (_, Some(argument), None, None) => Some(ArgsType::Plain(argument.as_str())),
-            // This looks like {{$path ../images}}
+            // This looks like [[#path ../images]]
             (_, _, Some(argument), Some(default_value)) => {
                 Some(ArgsType::Default(argument.as_str(), default_value.as_str()))
             }
-            // This looks like \{{$any string}}
+            // This looks like \[[#any string]]
             (Some(mat), _, _, _) if mat.as_str().starts_with(ESCAPE_CHAR) => {
                 Some(ArgsType::Escaped)
             }
