@@ -36,7 +36,7 @@ impl Preprocessor for Template {
                         .map(|dir| src_dir.join(dir))
                         .expect("All book items have a parent");
 
-                    let content = replace(&chapter.content, base, source, 0);
+                    let content = replace_template(&chapter.content, base, source, 0);
                     chapter.content = content;
                 }
             }
@@ -50,7 +50,7 @@ impl Preprocessor for Template {
     }
 }
 
-fn replace<P1, P2>(chapter_content: &str, base: P1, source: P2, depth: usize) -> String
+fn replace_template<P1, P2>(chapter_content: &str, base: P1, source: P2, depth: usize) -> String
 where
     P1: AsRef<Path>,
     P2: AsRef<Path>,
@@ -64,11 +64,16 @@ where
     for link in links::extract_template_links(chapter_content) {
         replaced.push_str(&chapter_content[previous_end_index..link.start_index]);
 
-        match link.substitute_args_in_template(&path) {
+        match link.replace_args(&path) {
             Ok(new_content) => {
                 if depth < MAX_LINK_NESTED_DEPTH {
                     if let Some(rel_path) = link.link_type.relative_path(path) {
-                        replaced.push_str(&replace(&new_content, rel_path, source, depth + 1));
+                        replaced.push_str(&replace_template(
+                            &new_content,
+                            rel_path,
+                            source,
+                            depth + 1,
+                        ));
                     } else {
                         replaced.push_str(&new_content);
                     }
