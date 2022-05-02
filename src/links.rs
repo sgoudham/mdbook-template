@@ -116,7 +116,19 @@ impl<'a> Link<'a> {
                 Some(LinkType::Template(PathBuf::from(file.trim())))
             }
             (_, _, Some(file), Some(args)) => {
-                all_args.extend(extract_template_args(args.as_str()).collect::<Vec<_>>());
+                let matches = TEMPLATE_ARGS.captures_iter(args.as_str());
+
+                let split_args = matches
+                    .into_iter()
+                    .map(|mat| {
+                        let mut split_n = mat.unwrap().get(0).unwrap().as_str().splitn(2, '=');
+                        let key = split_n.next().unwrap().trim();
+                        let value = split_n.next().unwrap();
+                        (key, value)
+                    })
+                    .collect::<Vec<_>>();
+                all_args.extend(split_args);
+
                 Some(LinkType::Template(PathBuf::from(file.as_str())))
             }
             (Some(mat), _, _, _) if mat.as_str().starts_with(ESCAPE_CHAR) => {
@@ -194,26 +206,6 @@ impl<'a> Iterator for LinkIter<'a> {
 
 pub(crate) fn extract_template_links(contents: &str) -> LinkIter<'_> {
     LinkIter(TEMPLATE.captures_iter(contents))
-}
-
-struct TemplateArgsIter<'a>(CaptureMatches<'a, 'a>);
-
-impl<'a> Iterator for TemplateArgsIter<'a> {
-    type Item = (&'a str, &'a str);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(cap) = (&mut self.0).next() {
-            let mut split_args = cap.unwrap().get(0).unwrap().as_str().splitn(2, '=');
-            let key = split_args.next().unwrap().trim();
-            let value = split_args.next().unwrap();
-            return Some((key, value));
-        }
-        None
-    }
-}
-
-fn extract_template_args(contents: &str) -> TemplateArgsIter<'_> {
-    TemplateArgsIter(TEMPLATE_ARGS.captures_iter(contents))
 }
 
 #[derive(PartialEq, Debug, Clone)]
