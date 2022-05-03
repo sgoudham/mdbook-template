@@ -9,16 +9,21 @@
 
 ## Table of Contents
 
-- [mdbook-template](#mdbook-template)
-    * [Author Notes](#author-notes)
-    * [Installation](#installation)
-    * [About](#about)
-    * [Format](#format)
-    * [Valid Configurations](#valid-configurations)
-    * [Example](#example)
-    * [License](#license)
-    * [Contributing](#contributing)
-    * [Acknowledgement](#acknowledgement)
+* [Author Notes](#author-notes)
+* [Installation](#installation)
+* [About](#about)
+* [Format](#format)
+    + [Template](#template)
+    + [Arguments](#arguments)
+    + [Default Values](#default-values)
+* [Valid Configurations](#valid-configurations)
+    + [Template](#template-1)
+    + [Arguments](#arguments-1)
+* [Example](#example)
+* [GitHub Actions](#github-actions)
+* [License](#license)
+* [Contributing](#contributing)
+* [Acknowledgement](#acknowledgement)
 
 ## Author Notes
 
@@ -104,14 +109,14 @@ The format is as follows
 ### Default Values
 
 Default values can be set in case some files need dynamic arguments and other don't.  
-The format is as follows 
+The format is as follows
 
 ```text
       1          2
 [[#<name> <default-value>]]
 ```
 
-1. The name of the argument 
+1. The name of the argument
 2. The value that this argument should have by default
 
 ## Valid Configurations
@@ -123,25 +128,15 @@ The format is as follows
 ```
 
 ```markdown
-{{#template
-    file.txt
-    path=../images
-    author=Goudham
-}}
+{{#template file.txt path=../images author=Goudham }}
 ```
 
 ```markdown
-// Not recommended but valid
-{{#template     file.txt   path=../images author=Goudham}}
+// Not recommended but valid {{#template file.txt path=../images author=Goudham}}
 ```
 
 ```markdown
-// Not recommended but valid
-{{#template
-file.txt
-        path=../images
-    author=Goudham
-}}
+// Not recommended but valid {{#template file.txt path=../images author=Goudham }}
 ```
 
 ### Arguments
@@ -219,11 +214,7 @@ Some Content...
 
 Some Content...
 
-{{#template
-    ../templates/footer.md
-    path=../images
-    authors=Goudham, Hazel
-}}
+{{#template ../templates/footer.md path=../images authors=Goudham, Hazel }}
 ```
 
 After running `mdbook build` with the mdbook-template preprocessor enabled, the files will have dynamic paths to the
@@ -269,7 +260,18 @@ Further examples are included within the [examples](/examples) directory which d
 
 ## GitHub Actions
 
-TODO
+Include the following within your `.yml` workflow files if you need `mdbook-template` as an executable to build your
+book.
+
+```yaml
+- name: Install mdbook-template
+  run: |
+    mkdir mdbook-template
+    curl -sSL https://github.com/sgoudham/mdbook-template/releases/latest/download/mdbook-template-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook-template
+    echo `pwd`/mdbook-template >> $GITHUB_PATH
+```
+
+The above step will ensure the latest version of mdbook-template is retrieved and built.
 
 ## License
 
