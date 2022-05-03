@@ -128,15 +128,25 @@ The format is as follows
 ```
 
 ```markdown
-{{#template file.txt path=../images author=Goudham }}
+{{#template
+    file.txt
+    path=../images
+    author=Goudham
+}}
 ```
 
 ```markdown
-// Not recommended but valid {{#template file.txt path=../images author=Goudham}}
+// Not recommended but valid
+{{#template     file.txt   path=../images author=Goudham}}
 ```
 
 ```markdown
-// Not recommended but valid {{#template file.txt path=../images author=Goudham }}
+// Not recommended but valid
+{{#template
+file.txt
+        path=../images
+    author=Goudham
+}}
 ```
 
 ### Arguments Config
