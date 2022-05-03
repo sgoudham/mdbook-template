@@ -9,16 +9,21 @@
 
 ## Table of Contents
 
-- [mdbook-template](#mdbook-template)
-    * [Author Notes](#author-notes)
-    * [Installation](#installation)
-    * [About](#about)
-    * [Format](#format)
-    * [Valid Configurations](#valid-configurations)
-    * [Example](#example)
-    * [License](#license)
-    * [Contributing](#contributing)
-    * [Acknowledgement](#acknowledgement)
+* [Author Notes](#author-notes)
+* [Installation](#installation)
+* [About](#about)
+* [Format](#format)
+    + [Template](#template)
+    + [Arguments](#arguments)
+    + [Default Values](#default-values)
+* [Valid Configurations](#valid-configurations)
+    + [Template](#template-config)
+    + [Arguments](#arguments-config)
+* [Example](#example)
+* [GitHub Actions](#github-actions)
+* [License](#license)
+* [Contributing](#contributing)
+* [Acknowledgement](#acknowledgement)
 
 ## Author Notes
 
@@ -39,7 +44,8 @@ $ cargo install mdbook-template
 [preprocessor.template]
 ```
 
-**You're good to go :D Continue building your mdbook normally!**
+**You're good to go :D  
+Continue building your mdbook normally!**
 
 ```shell
 $ mdbook build
@@ -74,6 +80,8 @@ Please view the given [example](#example) which demonstrates it in action.
 
 ## Format
 
+### Template
+
 The format is as follows
 
 ```text
@@ -81,60 +89,83 @@ The format is as follows
     {{#template     <file>      <args>}}
 ```
 
-1. The identifier that this text should be replaced
+1. The identifier that tells `mdbook-template` that this text should be replaced by a template
 2. The `relative path` to the template file
 3. Any arguments that should be substituted within the template file. Arguments should be seperated by whitespace and
    should be in the `key=value` format.
 
-Arguments to be replaced within the template files should be wrapped in `{}`
+### Arguments
+
+Arguments to be replaced within the template files should be wrapped in `[[# ...]]`  
+The format is as follows
+
+```text
+     1
+[[#<name>]]
+```
+
+1. The name of the argument
+
+### Default Values
+
+Default values can be set in case some files need dynamic arguments and other don't.  
+The format is as follows
+
+```text
+      1          2
+[[#<name> <default-value>]]
+```
+
+1. The name of the argument
+2. The value that this argument should have by default
 
 ## Valid Configurations
 
+### Template Config
+
 ```markdown
-# Valid
-
 {{#template file.txt path=../images author=Goudham}}
+```
 
-# Valid
-
+```markdown
 {{#template
     file.txt
     path=../images
     author=Goudham
 }}
+```
 
-# Valid
-
+```markdown
 // Not recommended but valid
 {{#template     file.txt   path=../images author=Goudham}}
+```
 
-# Valid
-
+```markdown
 // Not recommended but valid
 {{#template
 file.txt
         path=../images
     author=Goudham
 }}
+```
 
-# Invalid
+### Arguments Config
 
-// Use {{#include}} for simply including files
-{{#template file.txt}}
+```markdown
+\[[#escaped]]
+```
 
-# Invalid
+```markdown
+[[#width]]
+```
 
-{{#template
-    file.txt
-    path=../images
-    author=Goudham}}
+```markdown
+[[#width 200px]]
+```
 
-# Invalid
-
-{{#template file.txt
-    path=../images
-    author=Goudham
-}}
+```markdown
+// Not recommended but valid
+[[   #width   400px   ]]
 ```
 
 ## Example
@@ -161,9 +192,9 @@ and the following content
 `templates/footer.md`
 
 ```markdown
--- Designed By {authors} --
-![ferris]({path}/ferris.png)
-![corro]({path}/corro.png)
+-- Designed By [[#authors]] --
+![ferris]([[#path]]/ferris.png)
+![corro]([[#path]]/corro.png)
 ```
 
 `rust.md`
@@ -193,11 +224,7 @@ Some Content...
 
 Some Content...
 
-{{#template
-    ../templates/footer.md
-    path=../images
-    authors=Goudham, Hazel
-}}
+{{#template ../templates/footer.md path=../images authors=Goudham, Hazel }}
 ```
 
 After running `mdbook build` with the mdbook-template preprocessor enabled, the files will have dynamic paths to the
@@ -240,6 +267,21 @@ Some Content...
 ```
 
 Further examples are included within the [examples](/examples) directory which demonstrate a variety of usages.
+
+## GitHub Actions
+
+Include the following within your `.yml` workflow files if you need `mdbook-template` as an executable to build your
+book.
+
+```yaml
+- name: Install mdbook-template
+  run: |
+    mkdir mdbook-template
+    curl -sSL https://github.com/sgoudham/mdbook-template/releases/latest/download/mdbook-template-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook-template
+    echo `pwd`/mdbook-template >> $GITHUB_PATH
+```
+
+The above step will ensure the latest version of mdbook-template is retrieved and built.
 
 ## License
 
