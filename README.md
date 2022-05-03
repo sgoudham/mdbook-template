@@ -17,8 +17,8 @@
     + [Arguments](#arguments)
     + [Default Values](#default-values)
 * [Valid Configurations](#valid-configurations)
-    + [Template](#template-1)
-    + [Arguments](#arguments-1)
+    + [Template](#template-config)
+    + [Arguments](#arguments-config)
 * [Example](#example)
 * [GitHub Actions](#github-actions)
 * [License](#license)
@@ -121,7 +121,7 @@ The format is as follows
 
 ## Valid Configurations
 
-### Template
+### Template Config
 
 ```markdown
 {{#template file.txt path=../images author=Goudham}}
@@ -139,7 +139,7 @@ The format is as follows
 // Not recommended but valid {{#template file.txt path=../images author=Goudham }}
 ```
 
-### Arguments
+### Arguments Config
 
 ```markdown
 \[[#escaped]]
