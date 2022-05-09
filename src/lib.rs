@@ -13,7 +13,6 @@ mod utils;
 
 const MAX_LINK_NESTED_DEPTH: usize = 10;
 
-#[derive(Default)]
 pub struct Template;
 
 impl Template {
@@ -288,6 +287,8 @@ mod lib_tests {
 
     #[test]
     fn test_sad_path_invalid_file() {
+        env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+
         let start_chapter_content = "{{#template footer.md}}";
 
         let actual_chapter_content =
