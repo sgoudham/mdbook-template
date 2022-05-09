@@ -69,7 +69,7 @@ lazy_static! {
     .unwrap();
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug)]
 pub(crate) struct Link<'a> {
     pub(crate) start_index: usize,
     pub(crate) end_index: usize,
@@ -167,7 +167,7 @@ impl<'a> Link<'a> {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug)]
 pub(crate) enum LinkType {
     Escaped,
     Template(PathBuf),
@@ -207,7 +207,7 @@ pub(crate) fn extract_template_links(contents: &str) -> LinkIter<'_> {
     LinkIter(TEMPLATE.captures_iter(contents))
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug)]
 struct Args<'a> {
     start_index: usize,
     end_index: usize,
@@ -270,7 +270,7 @@ impl<'a> Args<'a> {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug)]
 enum ArgsType<'a> {
     Escaped,
     Plain(&'a str),
