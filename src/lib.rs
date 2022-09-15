@@ -9,7 +9,7 @@ use mdbook::BookItem;
 use crate::utils::{FileReader, SystemFileReader};
 
 mod links;
-mod utils;
+pub mod utils;
 
 const MAX_LINK_NESTED_DEPTH: usize = 10;
 
@@ -58,7 +58,7 @@ impl Preprocessor for Template {
     }
 }
 
-fn replace_template<P1, P2, FR>(
+pub fn replace_template<P1, P2, FR>(
     chapter_content: &str,
     file_reader: &FR,
     base: P1,
