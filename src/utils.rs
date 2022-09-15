@@ -4,16 +4,16 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Error, Result};
 
-pub(crate) trait FileReader {
+pub trait FileReader {
     fn read_to_string(&self, file_name: &Path, template_text: &str) -> Result<String>;
 }
 
 #[derive(PartialEq, Debug, Clone, Default)]
-pub(crate) struct SystemFileReader;
+pub struct SystemFileReader;
 
 #[derive(PartialEq, Debug, Clone, Default)]
-pub(crate) struct TestFileReader {
-    pub(crate) captured_contents: HashMap<PathBuf, String>,
+pub struct TestFileReader {
+    pub captured_contents: HashMap<PathBuf, String>,
 }
 
 impl FileReader for SystemFileReader {
