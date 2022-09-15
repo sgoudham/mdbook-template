@@ -8,10 +8,10 @@ pub trait FileReader {
     fn read_to_string(&self, file_name: &Path, template_text: &str) -> Result<String>;
 }
 
-#[derive(PartialEq, Debug, Clone, Default)]
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct SystemFileReader;
 
-#[derive(PartialEq, Debug, Clone, Default)]
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct TestFileReader {
     pub captured_contents: HashMap<PathBuf, String>,
 }
