@@ -1,6 +1,6 @@
 [package]
 name = "mdbook-template"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 authors = ["Goudham Suresh <sgoudham@gmail.com>"]
 description = "A mdbook preprocessor that allows the re-usability of template files with dynamic arguments"
