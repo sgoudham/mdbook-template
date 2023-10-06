@@ -13,6 +13,7 @@ pub mod utils;
 
 const MAX_LINK_NESTED_DEPTH: usize = 10;
 
+#[derive(Default)]
 pub struct Template;
 
 impl Template {
@@ -38,13 +39,8 @@ impl Preprocessor for Template {
                         .map(|dir| src_dir.join(dir))
                         .expect("All book items have a parent");
 
-                    let content = replace_template(
-                        &chapter.content,
-                        &SystemFileReader::default(),
-                        base,
-                        source,
-                        0,
-                    );
+                    let content =
+                        replace_template(&chapter.content, &SystemFileReader, base, source, 0);
                     chapter.content = content;
                 }
             }
@@ -79,7 +75,7 @@ where
     for link in links::extract_template_links(chapter_content) {
         replaced.push_str(&chapter_content[previous_end_index..link.start_index]);
 
-        match link.replace_args(&path, file_reader) {
+        match link.replace_args(path, file_reader) {
             Ok(new_content) => {
                 if depth < MAX_LINK_NESTED_DEPTH {
                     if let Some(rel_path) = link.link_type.relative_path(path) {
@@ -202,8 +198,8 @@ mod lib_tests {
         let start_chapter_content = r"
         {{#template header.md title=Example Title}}
         Some content...
-        {{#template 
-            footer.md 
+        {{#template
+            footer.md
         authors=Goudham & Hazel}}";
         let end_chapter_content = r"
         # Example Title

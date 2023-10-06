@@ -17,26 +17,26 @@ lazy_static! {
     // r"(?x)\\\{\{\#.*\}\}|\{\{\s*\#(template)\s+([\S]+)\s*\}\}|\{\{\s*\#(template)\s+([\S]+)\s+([^}]+)\}\}"
     static ref TEMPLATE: Regex = Regex::new(
         r"(?x)                              # enable insignificant whitespace mode
-         
+
         \\\{\{                              # escaped link opening parens
         \#.*                                # match any character
         \}\}                                # escaped link closing parens
-         
+
         |                                   # or
-        
+
         \{\{\s*                             # link opening parens and whitespace(s)
         \#(template)                        # link type - template
         \s+                                 # separating whitespace
         ([\S]+)                             # relative path to template file
         \s*                                 # optional separating whitespaces(s)
-        \}\}                                # link closing parens 
-        
+        \}\}                                # link closing parens
+
         |                                   # or
-         
+
         \{\{\s*                             # link opening parens and whitespace(s)
         \#(template)                        # link type - template
         \s+                                 # separating whitespace
-        ([\S]+)                             # relative path to template file 
+        ([\S]+)                             # relative path to template file
         \s+                                 # separating whitespace(s)
         ([^}]+)                             # get all template arguments
         \}\}                                # link closing parens"
@@ -46,20 +46,20 @@ lazy_static! {
     // r"(?x)\\\[\[.*\]\]|\[\[\s*\#([\S]+)\s*\]\]|\[\[\s*\#([\S]+)\s+([^]]+)\]\]"
     static ref ARGS: Regex = Regex::new(
         r"(?x)                                  # enable insignificant whitespace mode
-    
+
         \\\[\[                                  # escaped link opening square brackets
         \#.*                                    # match any character
         \]\]                                    # escaped link closing parens
-    
+
         |                                       # or
-    
+
         \[\[\s*                                 # link opening parens and whitespace(s)
         \#([\S]+)                               # arg name
         \s*                                     # optional separating whitespace(s)
         \]\]                                    # link closing parens
-    
+
         |                                       # or
-    
+
         \[\[\s*                                 # link opening parens and whitespace(s)
         \#([\S]+)                               # arg name
         \s+                                     # optional separating whitespace(s)
@@ -113,23 +113,36 @@ impl<'a> Link<'a> {
                         .split(LINE_BREAKS)
                         .map(|str| str.trim())
                         .filter(|trimmed| !trimmed.is_empty())
-                        .map(|mat| {
+                        .filter_map(|mat| {
                             let mut split_n = mat.splitn(2, '=');
-                            let key = split_n.next().unwrap().trim();
-                            let value = split_n.next().unwrap();
-                            (key, value)
+                            if let Some(key) = split_n.next() {
+                                let key = key.trim();
+                                if let Some(value) = split_n.next() {
+                                    return Some((key, value));
+                                }
+                            }
+                            eprintln!("Couldn't find key or value while parsing argument {}", mat);
+                            None
                         })
                         .collect::<Vec<_>>(),
 
                     // This looks like {{#template <file> <args>}}
                     false => TEMPLATE_ARGS
                         .captures_iter(args.as_str())
-                        .into_iter()
-                        .map(|mat| {
-                            let mut split_n = mat.unwrap().get(0).unwrap().as_str().splitn(2, '=');
-                            let key = split_n.next().unwrap().trim();
-                            let value = split_n.next().unwrap();
-                            (key, value)
+                        .filter_map(|mat| {
+                            let captures = mat.ok()?;
+                            let mut split_n = captures.get(0)?.as_str().splitn(2, '=');
+                            if let Some(key) = split_n.next() {
+                                let key = key.trim();
+                                if let Some(value) = split_n.next() {
+                                    return Some((key.trim(), value));
+                                }
+                            }
+                            eprintln!(
+                                "Couldn't parse key or value while parsing {:?}",
+                                &args.as_str()
+                            );
+                            None
                         })
                         .collect::<Vec<_>>(),
                 };
@@ -157,7 +170,7 @@ impl<'a> Link<'a> {
         FR: FileReader,
     {
         match self.link_type {
-            LinkType::Escaped => Ok((&self.link_text[1..]).to_owned()),
+            LinkType::Escaped => Ok((self.link_text[1..]).to_owned()),
             LinkType::Template(ref pat) => {
                 let target = base.as_ref().join(pat);
                 let contents = file_reader.read_to_string(&target, self.link_text)?;
@@ -195,7 +208,7 @@ impl<'a> Iterator for LinkIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for cap in &mut self.0 {
-            if let Some(inc) = Link::from_capture(cap.unwrap()) {
+            if let Some(inc) = Link::from_capture(cap.ok()?) {
                 return Some(inc);
             }
         }
@@ -499,7 +512,7 @@ year=2022
 
     #[test]
     fn test_extract_template_links_with_newlines_malformed() {
-        let s = "{{#template test.rs 
+        let s = "{{#template test.rs
         lang=rust
         year=2022}}";
 
@@ -509,9 +522,9 @@ year=2022
             res,
             vec![Link {
                 start_index: 0,
-                end_index: 58,
+                end_index: 57,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
-                link_text: "{{#template test.rs \n        lang=rust\n        year=2022}}",
+                link_text: "{{#template test.rs\n        lang=rust\n        year=2022}}",
                 args: HashMap::from([("lang", "rust"), ("year", "2022")]),
             },]
         );
