@@ -121,7 +121,10 @@ impl<'a> Link<'a> {
                                     return Some((key, value));
                                 }
                             }
-                            eprintln!("Couldn't find key or value while parsing argument {}", mat);
+                            eprintln!(
+                                "Couldn't find key or value while parsing the argument '{}'",
+                                mat
+                            );
                             None
                         })
                         .collect::<Vec<_>>(),
@@ -139,7 +142,7 @@ impl<'a> Link<'a> {
                                 }
                             }
                             eprintln!(
-                                "Couldn't parse key or value while parsing {:?}",
+                                "Couldn't parse key or value while parsing '{:?}'",
                                 &args.as_str()
                             );
                             None
