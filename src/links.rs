@@ -122,7 +122,7 @@ impl<'a> Link<'a> {
                                 }
                             }
                             eprintln!(
-                                "Couldn't find key or value while parsing the argument '{}'",
+                                "Couldn't find a key/value pair while parsing the argument '{}'",
                                 mat
                             );
                             None
@@ -515,11 +515,14 @@ year=2022
 
     #[test]
     fn test_extract_template_links_with_newlines_malformed() {
-        let s = r#"{{#template test.rs 
-        lang=rust
-        year=2022}}"#;
+        let s = [
+            "{{#template test.rs \n",
+            "        lang=rust\n",
+            "        year=2022}}",
+        ]
+        .concat();
 
-        let res = extract_template_links(s).collect::<Vec<_>>();
+        let res = extract_template_links(&s).collect::<Vec<_>>();
 
         assert_eq!(
             res,
