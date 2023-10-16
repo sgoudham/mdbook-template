@@ -515,9 +515,9 @@ year=2022
 
     #[test]
     fn test_extract_template_links_with_newlines_malformed() {
-        let s = "{{#template test.rs
+        let s = r#"{{#template test.rs 
         lang=rust
-        year=2022}}";
+        year=2022}}"#;
 
         let res = extract_template_links(s).collect::<Vec<_>>();
 
@@ -525,9 +525,9 @@ year=2022
             res,
             vec![Link {
                 start_index: 0,
-                end_index: 57,
+                end_index: 58,
                 link_type: LinkType::Template(PathBuf::from("test.rs")),
-                link_text: "{{#template test.rs\n        lang=rust\n        year=2022}}",
+                link_text: "{{#template test.rs \n        lang=rust\n        year=2022}}",
                 args: HashMap::from([("lang", "rust"), ("year", "2022")]),
             },]
         );
