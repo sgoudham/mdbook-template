@@ -292,4 +292,24 @@ mod lib_tests {
 
         assert_eq!(actual_chapter_content, start_chapter_content);
     }
+
+    #[test]
+    fn test_sad_path_bad_template() {
+        let start_chapter_content = [
+            "This is {{#template template.md",
+            "text=valid text",
+            "this has no key for the value and is going to break things}}",
+        ]
+        .join("\n");
+        let end_chapter_content = "This is valid text";
+        let file_name: PathBuf = PathBuf::from("template.md");
+        let template_file_contents = "[[#text]]".to_string();
+        let map = HashMap::from([(file_name, template_file_contents)]);
+        let file_reader = &TestFileReader::from(map);
+
+        let actual_chapter_content =
+            replace_template(&start_chapter_content, file_reader, "", "", 0);
+
+        assert_eq!(actual_chapter_content, end_chapter_content);
+    }
 }
