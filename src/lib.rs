@@ -13,6 +13,7 @@ pub mod utils;
 
 const MAX_LINK_NESTED_DEPTH: usize = 10;
 
+#[derive(Default)]
 pub struct Template;
 
 impl Template {
@@ -38,13 +39,8 @@ impl Preprocessor for Template {
                         .map(|dir| src_dir.join(dir))
                         .expect("All book items have a parent");
 
-                    let content = replace_template(
-                        &chapter.content,
-                        &SystemFileReader::default(),
-                        base,
-                        source,
-                        0,
-                    );
+                    let content =
+                        replace_template(&chapter.content, &SystemFileReader, base, source, 0);
                     chapter.content = content;
                 }
             }
@@ -79,7 +75,7 @@ where
     for link in links::extract_template_links(chapter_content) {
         replaced.push_str(&chapter_content[previous_end_index..link.start_index]);
 
-        match link.replace_args(&path, file_reader) {
+        match link.replace_args(path, file_reader) {
             Ok(new_content) => {
                 if depth < MAX_LINK_NESTED_DEPTH {
                     if let Some(rel_path) = link.link_type.relative_path(path) {
@@ -202,8 +198,8 @@ mod lib_tests {
         let start_chapter_content = r"
         {{#template header.md title=Example Title}}
         Some content...
-        {{#template 
-            footer.md 
+        {{#template
+            footer.md
         authors=Goudham & Hazel}}";
         let end_chapter_content = r"
         # Example Title
@@ -295,5 +291,25 @@ mod lib_tests {
             replace_template(start_chapter_content, &TestFileReader::default(), "", "", 0);
 
         assert_eq!(actual_chapter_content, start_chapter_content);
+    }
+
+    #[test]
+    fn test_sad_path_bad_template() {
+        let start_chapter_content = [
+            "This is {{#template template.md",
+            "text=valid text",
+            "this has no key for the value and is going to break things}}",
+        ]
+        .join("\n");
+        let end_chapter_content = "This is valid text";
+        let file_name: PathBuf = PathBuf::from("template.md");
+        let template_file_contents = "[[#text]]".to_string();
+        let map = HashMap::from([(file_name, template_file_contents)]);
+        let file_reader = &TestFileReader::from(map);
+
+        let actual_chapter_content =
+            replace_template(&start_chapter_content, file_reader, "", "", 0);
+
+        assert_eq!(actual_chapter_content, end_chapter_content);
     }
 }
