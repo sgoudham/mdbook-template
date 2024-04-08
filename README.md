@@ -7,6 +7,11 @@
 
 > A mdbook preprocessor that allows the re-usability of template files with dynamic arguments
 
+> [!IMPORTANT]
+> **This package is no longer actively maintained**. I initially created this
+> when I was actively using mdBook for my website but am no longer doing so and
+> find it hard to motivate myself to work on this project.
+
 ## Table of Contents
 
 * [Author Notes](#author-notes)
